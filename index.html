@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CARLOS | COLCIAC </title>
+  <!-- 
+    ▶ Como usar
+    1) Coloque estes arquivos na mesma pasta que este HTML e ajuste os src abaixo se quiser:
+       - logo COLCIAC:  assets/colciac.png
+       - wallpaper (sem monitor):  assets/wallpaper-odyssey.jpg
+    2) Fluxo: Barra 0→100 → Logo → Wallpaper → (aguarda 5s) Vídeo YouTube com moldura futurista.
+    3) Fundo escurece (dim) quando o vídeo abre + partículas de energia flutuando no fundo.
+  -->
+  <style>
+    :root{
+      --bg:#0a0f14;
+      --neon:#5dd3ff;
+      --neon-soft:#2aa7e6;
+      --text:#e6f7ff;
+      --muted:#89b9d6;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, Roboto, system-ui, -apple-system, Segoe UI, "Helvetica Neue", Arial, "Noto Sans";
+      background: radial-gradient(1200px 600px at 50% -10%, #0f2533 0%, transparent 60%),
+                  radial-gradient(800px 400px at 10% 120%, #0b1f2b 0%, transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    .bg-grid{ position:fixed; inset:0; pointer-events:none; opacity:.25;
+      background:
+        linear-gradient(transparent 95%, rgba(93,211,255,.2) 96%, transparent 97%),
+        linear-gradient(90deg, transparent 95%, rgba(93,211,255,.14) 96%, transparent 97%);
+      background-size: 42px 42px;
+      filter: drop-shadow(0 0 12px rgba(93,211,255,.25));
+      z-index:0;
+    }
+
+    main{position:relative; height:100vh; width:100vw;}
+    .center{position:absolute; inset:0; display:grid; place-items:center;}
+    .hidden{opacity:0; visibility:hidden}
+    .show{opacity:1; visibility:visible}
+    .fade{transition:opacity .9s ease, visibility .9s ease}
+
+    /* Loader */
+    .loader{ width:min(760px, 90vw); padding:28px 26px; border-radius:18px;
+      background: linear-gradient(180deg, rgba(13,20,27,.8), rgba(7,12,17,.8));
+      outline:1px solid rgba(93,211,255,.15);
+      box-shadow: 0 0 0 2px rgba(93,211,255,.08) inset, 0 12px 40px rgba(0,0,0,.45), 0 0 60px rgba(93,211,255,.08);
+      backdrop-filter: blur(6px);
+    }
+    .loader-title{ letter-spacing:.22em; text-transform:uppercase; font-weight:700; font-size:14px; color:var(--muted); margin-bottom:14px; }
+    .bar{ position:relative; height:28px; border-radius:14px; overflow:hidden;
+      background: linear-gradient(180deg, #0b1620, #0a1219);
+      outline:1px solid rgba(93,211,255,.25);
+      box-shadow: inset 0 0 20px rgba(93,211,255,.16);
+    }
+    .bar-fill{ height:100%; width:0%; background: linear-gradient(90deg, var(--neon) 0%, var(--neon-soft) 100%);
+      box-shadow:0 0 24px rgba(93,211,255,.55), 0 0 80px rgba(93,211,255,.35); border-right:1px solid rgba(255,255,255,.3);
+      transition: width .08s linear; }
+    .percent{ position:absolute; right:12px; top:50%; transform: translateY(-50%); font-weight:800; font-variant-numeric: tabular-nums; text-shadow:0 0 16px rgba(93,211,255,.8); }
+    .bar::before{ content:""; position:absolute; inset:-1px; border-radius:16px; pointer-events:none; box-shadow: 0 0 30px rgba(93,211,255,.35), 0 0 80px rgba(93,211,255,.25); opacity:.55; animation:pulse 2.2s ease-in-out infinite }
+    @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.9}}
+
+    /* Logo */
+    #logoStage img{ max-width:min(70vw, 880px); width:820px; height:auto;
+      filter: drop-shadow(0 0 24px rgba(93,211,255,.65)) drop-shadow(0 0 64px rgba(93,211,255,.35));
+      transform: scale(.92); opacity:0; animation: logoIn .9s cubic-bezier(.2,.7,.2,1) forwards; }
+    @keyframes logoIn{ to{ transform:scale(1); opacity:1 } }
+
+    /* Wallpaper */
+    #wallpaperStage{ position:absolute; inset:0; overflow:hidden; z-index:1; }
+    #wallpaperStage img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transform: scale(1.04);
+      filter: brightness(1.03) saturate(1.06); transition: opacity 1.2s ease, transform 2.4s ease; }
+    #wallpaperStage.show img{ opacity:1; transform: scale(1); }
+
+    /* Dim overlay (escurece fundo quando vídeo abre) */
+    #dimOverlay{ position:fixed; inset:0; z-index:3; pointer-events:none; opacity:0;
+      background: radial-gradient(900px 500px at 50% 30%, rgba(10,22,30,.7), rgba(6,12,18,.85));
+      transition: opacity .8s ease; }
+    #dimOverlay.on{ opacity:.85; }
+
+    /* Partículas */
+    #particles{ position:fixed; inset:0; z-index:2; pointer-events:none; opacity:.55; }
+
+    /* Vídeo com moldura futurista */
+    #videoStage{ z-index:4; }
+    .video-frame{ position:relative; width:min(980px, 80vw); aspect-ratio:16/9; border-radius:18px;
+      background: linear-gradient(180deg, rgba(10,16,22,.85), rgba(6,10,16,.85));
+      outline:1px solid rgba(93,211,255,.22);
+      box-shadow: 0 0 0 1px rgba(93,211,255,.12) inset, 0 10px 50px rgba(0,0,0,.55), 0 0 60px rgba(93,211,255,.18);
+      overflow:hidden; transition: transform .8s cubic-bezier(.2,.7,.2,1), opacity .8s ease; transform: scale(.94); opacity:0; }
+    .video-frame.show{ transform:scale(1); opacity:1; }
+    .video-bezel{ position:absolute; inset:-1px; border-radius:18px; pointer-events:none; box-shadow: 0 0 40px rgba(93,211,255,.35), 0 0 120px rgba(93,211,255,.25); }
+    .video-frame iframe{ position:absolute; inset:10px; width:calc(100% - 20px); height:calc(100% - 20px); border:0; border-radius:12px; background:#000; }
+
+    .out{opacity:0; visibility:hidden; transition: opacity .8s ease, visibility .8s ease}
+    .in{opacity:1; visibility:visible; transition: opacity .8s ease, visibility .8s ease}
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <main id="app" aria-live="polite">
+    <!-- Etapa 1: Carregamento -->
+    <section id="loadingStage" class="center fade in" aria-label="Carregando">
+      <div class="loader" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="loader-title">Inicializando •</div>
+        <div class="bar">
+          <div class="bar-fill" id="barFill"></div>
+          <div class="percent" id="percent">0%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Etapa 2: Logo COLCIAC -->
+    <section id="logoStage" class="center hidden" aria-label="Logo COLCIAC">
+      <img id="logoImg" alt="Logo COLCIAC iluminado" src="assetscolciac.png" />
+    </section>
+
+    <!-- Etapa 3: Wallpaper final (sem monitor) -->
+    <section id="wallpaperStage" class="hidden" aria-label="Wallpaper Futurista">
+      <img id="wallpaperImg" alt="Wallpaper tema Odyssey futurista" src="wallpaper-odyssey.png" />
+    </section>
+
+    <!-- Partículas + Dim -->
+    <canvas id="particles"></canvas>
+    <div id="dimOverlay"></div>
+
+    <!-- Etapa 4: Vídeo YouTube -->
+    <section id="videoStage" class="center hidden" aria-label="Vídeo de Apresentação">
+      <div class="video-frame" id="videoFrame">
+        <div class="video-bezel"></div>
+        <iframe id="ytPlayer" title="Apresentação do monitor" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen playsinline referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // ======= CONFIGURAÇÕES =======
+    const DURATIONS_PROGRESS_TOTAL = 3800; // 0 → 100
+    const DURATIONS_AFTER_LOGO_SHOW = 3000; // espera com logo
+    const DURATIONS_BEFORE_VIDEO = 3000; // aguardar 5s após wallpaper
+
+    // ======= ELEMENTOS =======
+    const barFill = document.getElementById('barFill');
+    const percent = document.getElementById('percent');
+    const loadingStage = document.getElementById('loadingStage');
+    const logoStage = document.getElementById('logoStage');
+    const wallpaperStage = document.getElementById('wallpaperStage');
+    const logoImg = document.getElementById('logoImg');
+    const wallpaperImg = document.getElementById('wallpaperImg');
+
+    const videoStage = document.getElementById('videoStage');
+    const videoFrame = document.getElementById('videoFrame');
+    const ytPlayer = document.getElementById('ytPlayer');
+    const dimOverlay = document.getElementById('dimOverlay');
+    const particlesCanvas = document.getElementById('particles');
+    const ctx = particlesCanvas.getContext('2d');
+
+    // ======= YT URL =======
+    const YT_URL = 'videoplaybackHD1n.mp4';
+
+    // Preload imagens
+    [logoImg, wallpaperImg].forEach(img => { const i = new Image(); i.src = img.src; });
+
+    // ======= PROGRESSO =======
+    function animateProgress(){
+      const start = performance.now();
+      function frame(now){
+        const elapsed = now - start;
+        const p = Math.min(1, elapsed / DURATIONS_PROGRESS_TOTAL);
+        const value = Math.floor(p * 100);
+        barFill.style.width = value + '%';
+        percent.textContent = value + '%';
+        document.querySelector('[role="progressbar"]').setAttribute('aria-valuenow', value);
+        if(p < 1){ requestAnimationFrame(frame); } else { onProgressComplete(); }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function onProgressComplete(){
+      // Sai o loader
+      loadingStage.classList.remove('in');
+      loadingStage.classList.add('out');
+
+      // Mostra o logo
+      setTimeout(() => {
+        logoStage.classList.remove('hidden');
+        logoStage.classList.add('in','fade');
+
+        // Depois, logo some e entra wallpaper
+        setTimeout(() => {
+          logoStage.classList.remove('in');
+          logoStage.classList.add('out');
+
+          setTimeout(() => {
+            wallpaperStage.classList.remove('hidden');
+            wallpaperStage.classList.add('show');
+
+            // === Aguarda 5s e abre vídeo ===
+            setTimeout(() => {
+              videoStage.classList.remove('hidden');
+              videoFrame.classList.add('show');
+              dimOverlay.classList.add('on'); // escurece o fundo
+              ytPlayer.src = YT_URL; // lazy-load do player
+            }, DURATIONS_BEFORE_VIDEO);
+
+          }, 850);
+        }, DURATIONS_AFTER_LOGO_SHOW);
+      }, 300);
+    }
+
+    // ======= PARTÍCULAS =======
+    function initParticles(){
+      const DPR = Math.min(2, window.devicePixelRatio || 1);
+      let W, H; let particles=[]; const COUNT = 120;
+
+      function resize(){
+        const rect = { w: window.innerWidth, h: window.innerHeight };
+        particlesCanvas.style.width = rect.w + 'px';
+        particlesCanvas.style.height = rect.h + 'px';
+        particlesCanvas.width = Math.floor(rect.w * DPR);
+        particlesCanvas.height = Math.floor(rect.h * DPR);
+        W = rect.w; H = rect.h;
+        ctx.setTransform(DPR,0,0,DPR,0,0);
+      }
+
+      function make(){
+        particles = new Array(COUNT).fill(0).map(() => ({
+          x: Math.random()*W,
+          y: Math.random()*H,
+          r: 1 + Math.random()*2.2,
+          vx: (Math.random()-.5)*0.25,
+          vy: (Math.random()-.5)*0.25,
+          glow: 6 + Math.random()*10
+        }));
+      }
+
+      function step(){
+        ctx.clearRect(0,0,W,H);
+        for(const p of particles){
+          p.x += p.vx; p.y += p.vy;
+          if(p.x < -10) p.x = W+10; if(p.x > W+10) p.x = -10;
+          if(p.y < -10) p.y = H+10; if(p.y > H+10) p.y = -10;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(93,211,255,.85)';
+          ctx.shadowColor = 'rgba(93,211,255,.8)';
+          ctx.shadowBlur = p.glow;
+          ctx.fill();
+        }
+        // conexões sutis
+        ctx.shadowBlur = 0; ctx.lineWidth = 0.6; ctx.strokeStyle = 'rgba(93,211,255,.12)';
+        for(let i=0;i<particles.length;i++){
+          for(let j=i+1;j<particles.length;j++){
+            const a = particles[i], b = particles[j];
+            const dx=a.x-b.x, dy=a.y-b.y; const d2 = dx*dx+dy*dy;
+            if(d2 < 120*120){
+              const alpha = Math.max(0,.12 - d2/(120*120)/.12);
+              if(alpha>0){ ctx.globalAlpha = alpha; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.globalAlpha = 1; }
+            }
+          }
+        }
+        requestAnimationFrame(step);
+      }
+
+      resize(); make(); step();
+      window.addEventListener('resize', () => { resize(); make(); });
+    }
+
+    // Start
+    window.addEventListener('DOMContentLoaded', () => {
+      animateProgress();
+      initParticles();
+    });
+  </script>
+</body>
+</html>
